@@ -1,0 +1,6 @@
+LD I0
+JMPC alvograndepara
+LDN I1
+JMP fim
+alvograndepara: LD I1
+fim: ST Q0
