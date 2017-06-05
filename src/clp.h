@@ -13,3 +13,10 @@
 #define LEv 13
 #define OpAv 14
 #define JMPv 15
+#define RETv 16
+#define CTUv 17
+#define CTDv 18
+#define CTUDV 19
+#define TPv 20
+#define TONv 21
+#define TOFv 22

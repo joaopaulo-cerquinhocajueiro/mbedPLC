@@ -1,6 +1,5 @@
 #include "mbed.h"
-//#include <iostream>
-//#include <stdlib.h>
+#include <stdlib.h>
 #include "TextLCD.h"
 #include <stack>        //Biblioteca Pilha
 #include "string.h"
@@ -13,6 +12,7 @@ int PC;
 unsigned int funcao_retorno;
 Serial pc(USBTX, USBRX, 9600); // tx, rx
 char buff[20];
+Timeout timer[4];
 TextLCD lcd(PTE20, PTE21, PTE22,PTE23, PTE29, PTE30); // rs, e, d4-d7
 /*
   BusIn in(PTD0, PTD1, PTD2, PTD3, PTD4, PTD5, PTD6, PTD7);
@@ -26,15 +26,16 @@ DigitalOut ledFisico(PTD3);
 //DigitalOut azul(LED3);
 char acumulador;
 char M[8],I[8],Q[8];
-char PV //Present Value - Para Contador
-char PT //Present Time - Para Temporizador
+char T[4];
+unsigned long PV[4] ;//Present Value - Para Contador
+unsigned long PT[4] ;//Present Time - Para Temporizador
 //char M,I,Q;
 stack<int> pilha;
 stack<int> pilha_logica;
 
 
 typedef struct{
-    char rotulo[17], operador[4], modificador[3], operando[17];
+    char rotulo[17], operador[5], modificador[3], operando[17];
 }instrucao;
 instrucao *programa;
 
@@ -140,37 +141,13 @@ void OpA (int operando, int mod){
 void JMP (int mod, char operando[17]){
   unsigned int i;
   funcao_retorno=PC; // Esta variavel salva onde o programa estava quando JMP foi chamado
-  if(mod&2){
-    if(acumulador != 0){
-      for(i = 0; i < tamanho; i++){
-        if(strcmp(programa[i].rotulo, operando) == 0){
-          //pc.printf("Salto C\n");
-          PC = i-1;
-          return;
-        }
-      }
-    }
-  }
-  else if(mod&1){
-    if(acumulador == 0){
-      for(i = 0; i < tamanho; i++){
+  for(i = 0; i < tamanho; i++){
         if(strcmp(programa[i].rotulo, operando) == 0){
           //pc.printf("Salto N\n");
-          PC = i-1;
+          if((mod&2 && acumulador !=0)||((mod&1 && acumulador == 0)||mod&0))PC = i-1;
           return;
         }
-      }
-    }
-  }
-  else{
-    for(i = 0; i < tamanho; i++){
-      if(strcmp(programa[i].rotulo, operando) == 0){
-        //pc.printf("Salto sem mod\n");
-        PC = i-1;
-        return;
-      }
-    }
-  }
+   }
 }
 // Instrução RET (Retorna de uma função ou bloco de função)--------------------
 void RET (int mod){
@@ -331,22 +308,27 @@ void CTUD (char mod, char PV){
     }
   }
 }
+void TP(int pos){
+  T[pos] = 0;
+  acumulador = 0;
+}
 // Intrução TP (Temporizador de pulso)-----------------------------------------
-void TP (char PT){
-  char IN
-  IN=I[0];
-  if (IN != 0){
-    Q=1;
-    wait(PT)
-    Q=0;
+void TP (char &T){
+
+  if(acumulador != 0){  // ativar o temporizador
+    T[0] = 1;
+  }else{
+    if(T[0] == 1){
+
+    }
   }
+
 }
 // Instrução TON (Temporizador com retardo para ligar)-------------------------
 void TON (char PT){
-  char IN
-  IN=I[0];
+  char IN=I[0];
   if (IN != 0){
-    wait(PT)
+    wait(PT);
     Q=1;
   }else{
     Q=0;
@@ -354,12 +336,11 @@ void TON (char PT){
 }
 // Instução TOF (Temporizador com retardo para desligar)-----------------------
 void TOF (char PT){
-  char IN
-  IN=I[0];
+  char IN=I[0];
   if (IN != 0){
     Q=1;
   }else{
-    wait(PT)
+    wait(PT);
     Q=0;
   }
 }
@@ -498,11 +479,17 @@ void executa_instrucao(instrucao x){
            break;
     case CTUDv: CTUD(mod, x.PV);
            break;
-    case TPv: TP(x.PT);
-           break;
-    case TONv: TON(x.PT);
-           break;
-    case TOFv: TOF(x.PT);
+    case TPv:
+    case TONv:
+    case TOFv:    operando  = T1,1000
+          int pos = x.operando[1]  - '0';		// definindo qual memória de timer será utilizada
+          char *tempo_str;
+          tempo_str = strtok(x.operando,",");		// isolando somente o periodo dentro da string operando
+          unsigned long PT = atoi(tempo_str);	// convertendo o resto da string pra int
+          if(acumulador == 1 && T[pos] ==0){
+            timer[pos].attach(&TP(pos), (float)PT/1000);	// habilitando a interrupção para cada tipo de timer
+            T[pos] = 1;
+          }
           break;
     }
   }
